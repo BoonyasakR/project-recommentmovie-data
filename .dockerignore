@@ -1,0 +1,8 @@
+node_modules
+.git
+.gitignore
+.env
+npm-debug.log*
+server.log
+server.err
+neo4j_data

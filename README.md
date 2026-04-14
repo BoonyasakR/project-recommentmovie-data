@@ -127,6 +127,74 @@ Check:
 
 Usually means Neo4j credentials or database settings in `.env` are incorrect.
 
+## Docker
+
+This project is ready to run with Docker using the repo contents only:
+
+- application code
+- `Dockerfile`
+- `docker-compose.yml`
+- `.env`
+
+### First Machine: build and run
+
+1. Copy `.env.example` to `.env`
+2. Start the stack:
+
+```bash
+docker compose up -d --build
+```
+
+This starts:
+
+- `app` on `http://localhost:4000`
+- `neo4j` on `http://localhost:7474` and `bolt://localhost:7687`
+
+### Push the app image to a registry
+
+Set the image name in `.env` before building, for example:
+
+```env
+APP_IMAGE=your-dockerhub-user/movie-recommendation-system:latest
+```
+
+Then build and push:
+
+```bash
+docker compose build app
+docker compose push app
+```
+
+### Move to another machine
+
+Copy these files to the other machine:
+
+- project source code
+- `Dockerfile`
+- `docker-compose.yml`
+- `.env`
+
+Then pull and start:
+
+```bash
+docker compose pull app
+docker compose up -d
+```
+
+If you want the other machine to build locally instead of pulling from a registry:
+
+```bash
+docker compose up -d --build
+```
+
+### Data notes
+
+- Neo4j data is stored in the named Docker volume `neo4j_data`
+- Neo4j logs are stored in the named Docker volume `neo4j_logs`
+- If you do not need to keep local data, you can reset everything with `docker compose down -v`
+
+If you want to migrate existing Neo4j data between machines, export the database first or copy the Docker volume contents before bringing the stack up on the new machine.
+
 ## License
 
 MIT
