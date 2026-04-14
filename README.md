@@ -134,12 +134,26 @@ This project is ready to run with Docker using the repo contents only:
 - application code
 - `Dockerfile`
 - `docker-compose.yml`
-- `.env`
+
+### Quick start on any machine
+
+If the machine just cloned this repository, run:
+
+```bash
+docker compose up -d --build
+```
+
+That is enough for the default setup.
+
+### Optional `.env`
+
+You only need a `.env` file if you want to override the defaults, for example a custom image name, port, or Neo4j password.
+
+Copy `.env.example` to `.env` only when you need custom values.
 
 ### First Machine: build and run
 
-1. Copy `.env.example` to `.env`
-2. Start the stack:
+Start the stack:
 
 ```bash
 docker compose up -d --build
@@ -152,7 +166,7 @@ This starts:
 
 ### Push the app image to a registry
 
-Set the image name in `.env` before building, for example:
+If you want to push the app image, create `.env` first and set the image name, for example:
 
 ```env
 APP_IMAGE=your-dockerhub-user/movie-recommendation-system:latest
@@ -172,7 +186,8 @@ Copy these files to the other machine:
 - project source code
 - `Dockerfile`
 - `docker-compose.yml`
-- `.env`
+
+If you use custom settings, copy `.env` too.
 
 Then pull and start:
 

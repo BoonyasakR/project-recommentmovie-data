@@ -21,8 +21,6 @@ services:
       - neo4j
     ports:
       - "${PORT:-4000}:4000"
-    env_file:
-      - .env
     environment:
       PORT: 4000
       NEO4J_URI: bolt://neo4j:7687
