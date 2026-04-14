@@ -26,6 +26,13 @@
         <section class="hero-block">
             <h1>เลือกหนัง แล้วบอกระบบว่าคุณดูแล้วหรือชอบเรื่องไหน</h1>
             <p>หน้านี้ใช้แนว visual แบบเดียวกับไฟล์อ้างอิงที่คุณส่งมา แต่เปลี่ยน flow ให้ผู้ใช้เลือกระหว่าง <strong>ดูแล้ว</strong> กับ <strong>ถูกใจ</strong> ได้ก่อนบันทึกลงระบบจริง</p>
+            <div class="hero-actions">
+                <button type="button" class="nf-btn" id="seedAllHomeBtn">Add all sample data</button>
+                <button type="button" class="nf-btn-outline" id="seedUsersHomeBtn">Sample users</button>
+                <button type="button" class="nf-btn-outline" id="seedMoviesHomeBtn">Sample movies</button>
+                <button type="button" class="nf-btn-outline" id="seedRelationshipsHomeBtn">Sample relationships</button>
+            </div>
+            <p class="hero-note">ใช้ปุ่มชุดนี้ได้ทั้ง role user และ admin เมื่อต้องการเติมข้อมูลตัวอย่างจากหน้าแรก</p>
         </section>
 
         <div class="toolbar-row">
@@ -43,6 +50,8 @@
     <button class="floating-confirm" id="confirmBtn" onclick="confirmSelection()">
         ยืนยันรายการ <span id="confirmTypeLabel">ถูกใจ</span> (<span id="selectCount">0</span>) →
     </button>
+
+    <div class="toast-container" id="toastContainer"></div>
 
     <script src="js/api.js"></script>
     <script src="js/app.js"></script>
@@ -62,6 +71,10 @@
                 link.style.display = MovieRecUI.isAdmin(currentUser) ? '' : 'none';
             });
             document.getElementById('movieSearch').addEventListener('input', MovieRecUI.debounce(handleSearch, 120));
+            document.getElementById('seedAllHomeBtn').addEventListener('click', handleSeedAllHome);
+            document.getElementById('seedUsersHomeBtn').addEventListener('click', handleSeedUsersHome);
+            document.getElementById('seedMoviesHomeBtn').addEventListener('click', handleSeedMoviesHome);
+            document.getElementById('seedRelationshipsHomeBtn').addEventListener('click', handleSeedRelationshipsHome);
             loadHomeMovies();
         }
 
@@ -212,6 +225,60 @@
                 showToast(error.message, 'error');
                 updateConfirmButton();
                 updateModeButtons();
+            }
+        }
+
+        async function handleSeedAllHome() {
+            await runSeedHomeAction('seedAllHomeBtn', 'Adding sample data...', async () => {
+                await seedDemoDataAPI();
+                showToast('เพิ่ม sample data ทั้งระบบแล้ว', 'success');
+            });
+        }
+
+        async function handleSeedUsersHome() {
+            await runSeedHomeAction('seedUsersHomeBtn', 'Adding sample users...', async () => {
+                await addSampleUsersAPI();
+                showToast('เพิ่ม sample users แล้ว', 'success');
+            });
+        }
+
+        async function handleSeedMoviesHome() {
+            await runSeedHomeAction('seedMoviesHomeBtn', 'Adding sample movies...', async () => {
+                await addSampleMoviesAPI();
+                showToast('เพิ่ม sample movies แล้ว', 'success');
+            });
+        }
+
+        async function handleSeedRelationshipsHome() {
+            await runSeedHomeAction('seedRelationshipsHomeBtn', 'Adding sample relationships...', async () => {
+                await addSampleRelationshipsAPI();
+                showToast('เพิ่ม sample relationships แล้ว', 'success');
+            });
+        }
+
+        async function runSeedHomeAction(buttonId, pendingLabel, action) {
+            const seedButtons = Array.from(document.querySelectorAll('.hero-actions button'));
+            const activeButton = document.getElementById(buttonId);
+            const originalLabels = seedButtons.map((button) => button.textContent);
+
+            seedButtons.forEach((button) => {
+                button.disabled = true;
+            });
+
+            if (activeButton) {
+                activeButton.textContent = pendingLabel;
+            }
+
+            try {
+                await action();
+                await loadHomeMovies();
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                seedButtons.forEach((button, index) => {
+                    button.disabled = false;
+                    button.textContent = originalLabels[index];
+                });
             }
         }
     </script>
