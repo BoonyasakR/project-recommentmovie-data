@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - MovieRec</title>
+    <link rel="stylesheet" href="css/netflix.css">
+</head>
+
+<body class="auth-shell">
+    <main class="auth-card">
+        <h1>Sign In</h1>
+        <p>เข้าสู่ระบบเพื่อเริ่มเลือกหนังที่ชอบและรับคำแนะนำเฉพาะบัญชีของคุณ</p>
+        <form class="auth-row" onsubmit="handleLoginSubmit(event)">
+            <input class="auth-input" id="loginName" type="text" placeholder="Username" autocomplete="username" required>
+            <input class="auth-input" id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" required>
+            <button class="nf-btn auth-submit" type="submit">Sign In</button>
+        </form>
+        <div id="authMessage"></div>
+        <div class="auth-footer">Admin เริ่มต้น: <strong>admin</strong> / <strong>admin123</strong></div>
+        <div class="auth-footer">
+            ยังไม่มีบัญชี? <a href="signup.html" style="color:#fff; font-weight:700;">สมัครสมาชิก</a>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+
+</html>

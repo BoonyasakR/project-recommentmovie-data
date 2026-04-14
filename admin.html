@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - MovieRec</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <nav class="navbar" id="navbar">
+        <div class="navbar-inner">
+            <a href="index.html" class="navbar-brand"><span>MovieRec</span></a>
+            <button class="menu-toggle" onclick="toggleMenu()">Menu</button>
+            <ul class="navbar-links" id="navLinks">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="admin.html" class="active">Admin</a></li>
+                <li><a href="recommend.html">Recommend</a></li>
+            </ul>
+            <div class="nav-meta">
+                <span class="badge badge-warning" id="adminIdentity">Admin</span>
+                <button class="btn btn-outline btn-sm" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="page-header">
+            <h1>Admin Control Room</h1>
+            <p>แก้ไขข้อมูลทุกส่วนของระบบจากหน้าเดียว ทั้ง users, movies, และ relationships รวมถึง role และ password ของบัญชีผู้ใช้</p>
+            <div class="toolbar" style="margin-top:1rem;">
+                <a class="btn btn-outline btn-sm" href="#usersSection">Users</a>
+                <a class="btn btn-outline btn-sm" href="#moviesSection">Movies</a>
+                <a class="btn btn-outline btn-sm" href="#relationshipsSection">Relationships</a>
+                <button class="btn btn-primary btn-sm" id="refreshAdminSummaryBtn">Refresh summary</button>
+            </div>
+        </section>
+
+        <section class="grid-4" style="margin-bottom:1.5rem;">
+            <div class="metric-card">
+                <div class="metric-number" id="adminTotalUsers">0</div>
+                <div class="metric-label">Users</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-number" id="adminTotalAdmins">0</div>
+                <div class="metric-label">Admins</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-number" id="adminTotalMovies">0</div>
+                <div class="metric-label">Movies</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-number" id="adminTotalRelationships">0</div>
+                <div class="metric-label">Relationships</div>
+            </div>
+        </section>
+
+        <section class="grid-2" id="usersSection">
+            <div class="card">
+                <div class="card-header">
+                    <h2>User Management</h2>
+                </div>
+                <div class="card-body">
+                    <div class="toolbar" style="margin-bottom:1rem;">
+                        <div class="connection-badge offline" id="usersConnectionBadge" data-connection-badge>
+                            <span class="dot"></span><span>Checking connection...</span>
+                        </div>
+                        <button class="btn btn-outline btn-sm" id="refreshUsersBtn">Reload users</button>
+                        <button class="btn btn-outline btn-sm" id="seedUsersDemoBtn">Add sample users</button>
+                    </div>
+
+                    <form id="addUserForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="userName">User name</label>
+                                <input type="text" id="userName" class="form-control" placeholder="john" required autocomplete="off">
+                            </div>
+                            <div class="form-group">
+                                <label for="userAge">Age</label>
+                                <input type="number" id="userAge" class="form-control" min="1" max="120" placeholder="25">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="userRole">Role</label>
+                                <select id="userRole" class="form-control">
+                                    <option value="user">User</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="userPassword">Password</label>
+                                <input type="text" id="userPassword" class="form-control" placeholder="Optional for demo users">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block" id="addUserBtn">Add User</button>
+                    </form>
+
+                    <div class="section-note">
+                        สร้าง user ใหม่ได้ทั้งแบบบัญชีใช้งานจริงและ demo user ถ้าใส่ password จะสามารถใช้ login ได้ทันที
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>Edit User</h2>
+                </div>
+                <div class="card-body">
+                    <div class="edit-context-card">
+                        <div class="edit-context-head">
+                            <div>
+                                <div class="edit-context-label">Editing status</div>
+                                <strong id="editUserStatusTitle">No user selected</strong>
+                            </div>
+                            <span class="badge badge-warning" id="editUserStatusBadge">Waiting</span>
+                        </div>
+                        <p class="edit-context-text" id="editUserHelperText">Pick a user from the list, then update only the fields you want to change. Leaving password empty keeps the current password.</p>
+                        <div class="edit-summary-grid">
+                            <div class="edit-summary-card">
+                                <span class="edit-summary-label">Current data</span>
+                                <strong id="editUserOriginalSummary">No selected user yet</strong>
+                            </div>
+                            <div class="edit-summary-card">
+                                <span class="edit-summary-label">After save</span>
+                                <strong id="editUserNextSummary">The updated result will appear here</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <form id="editUserForm">
+                        <div class="form-group">
+                            <label for="editUserOriginalName">Selected user</label>
+                            <input type="text" id="editUserOriginalName" class="form-control" readonly placeholder="Pick a user from the list below">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editUserName">Name</label>
+                                <input type="text" id="editUserName" class="form-control" placeholder="New user name">
+                            </div>
+                            <div class="form-group">
+                                <label for="editUserAge">Age</label>
+                                <input type="number" id="editUserAge" class="form-control" min="1" max="120" placeholder="Age">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editUserRole">Role</label>
+                                <select id="editUserRole" class="form-control">
+                                    <option value="user">User</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="editUserPassword">Reset password</label>
+                                <input type="text" id="editUserPassword" class="form-control" placeholder="Leave empty to keep current password">
+                            </div>
+                        </div>
+                        <div class="inline-controls">
+                            <button type="submit" class="btn btn-success" id="saveUserEditBtn">Save changes</button>
+                            <button type="button" class="btn btn-outline" id="cancelUserEditBtn">Cancel</button>
+                        </div>
+                    </form>
+
+                    <div class="grid-2" style="margin-top:1rem;">
+                        <div class="stat-card">
+                            <div class="stat-number" id="userCount">0</div>
+                            <div class="stat-label">All users</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="activeUsers">0</div>
+                            <div class="stat-label">Active users</div>
+                        </div>
+                    </div>
+
+                    <div class="danger-zone" style="margin-top:1rem;">
+                        <p>User danger zone</p>
+                        <div class="inline-controls">
+                            <button class="btn btn-outline btn-sm" id="searchClearBtn" type="button">Clear search</button>
+                            <button class="btn btn-danger btn-sm" id="deleteAllUsersBtn" type="button">Delete all users</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card" style="margin-top:1.5rem;">
+            <div class="card-header">
+                <h2>User List</h2>
+                <div class="toolbar" style="margin:0;">
+                    <input type="text" id="userSearchInput" class="form-control search-input" placeholder="Search by name, age or role">
+                    <span class="badge badge-primary" id="userCountBadge">0 users</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="userList">
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                        <span>Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card" style="margin-top:1.5rem;" id="adminUserProfileCard">
+            <div class="card-header">
+                <h2>Selected User Activity</h2>
+                <span class="badge badge-warning" id="adminUserProfileBadge">No user selected</span>
+            </div>
+            <div class="card-body" id="adminUserProfile">
+                <div class="empty-state">
+                    <div class="empty-state-icon">U</div>
+                    <h3>Select a user</h3>
+                    <p>กด View taste หรือ Edit ที่รายการ user เพื่อดูว่าคนนี้ดูอะไรและชอบเรื่องไหนบ้าง</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid-2" style="margin-top:1.5rem;" id="moviesSection">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Movie Management</h2>
+                </div>
+                <div class="card-body">
+                    <div class="toolbar" style="margin-bottom:1rem;">
+                        <div class="connection-badge offline" id="moviesConnectionBadge" data-connection-badge>
+                            <span class="dot"></span><span>Checking connection...</span>
+                        </div>
+                        <button class="btn btn-outline btn-sm" id="refreshMoviesBtn">Reload all</button>
+                        <button class="btn btn-outline btn-sm" id="seedMoviesDemoBtn">Add all sample data</button>
+                    </div>
+
+                    <form id="addMovieForm">
+                        <div class="form-group">
+                            <label for="movieTitle">Title</label>
+                            <input type="text" id="movieTitle" class="form-control" placeholder="Inception" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="movieGenre">Genre</label>
+                                <select id="movieGenre" class="form-control"></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="movieYear">Year</label>
+                                <input type="number" id="movieYear" class="form-control" min="1900" max="2035" placeholder="2024">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="movieImageUrl">Poster URL</label>
+                            <input type="url" id="movieImageUrl" class="form-control" placeholder="https://...">
+                        </div>
+                        <div class="form-group">
+                            <label for="movieDescription">Description</label>
+                            <textarea id="movieDescription" class="form-control" rows="3" placeholder="Short description"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block" id="addMovieBtn">Add Movie</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>Edit Movie</h2>
+                </div>
+                <div class="card-body">
+                    <form id="editMovieForm">
+                        <div class="form-group">
+                            <label for="editMovieOriginalTitle">Selected movie</label>
+                            <input type="text" id="editMovieOriginalTitle" class="form-control" readonly placeholder="Pick a movie from the catalog below">
+                        </div>
+                        <div class="form-group">
+                            <label for="editMovieTitle">Title</label>
+                            <input type="text" id="editMovieTitle" class="form-control" placeholder="Movie title">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editMovieGenre">Genre</label>
+                                <select id="editMovieGenre" class="form-control"></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="editMovieYear">Year</label>
+                                <input type="number" id="editMovieYear" class="form-control" min="1900" max="2035" placeholder="Year">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="editMovieImageUrl">Poster URL</label>
+                            <input type="url" id="editMovieImageUrl" class="form-control" placeholder="https://...">
+                        </div>
+                        <div class="form-group">
+                            <label for="editMovieDescription">Description</label>
+                            <textarea id="editMovieDescription" class="form-control" rows="3" placeholder="Movie description"></textarea>
+                        </div>
+                        <div class="inline-controls">
+                            <button type="submit" class="btn btn-success" id="saveMovieEditBtn">Save changes</button>
+                            <button type="button" class="btn btn-outline" id="cancelMovieEditBtn">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid-2" style="margin-top:1.5rem;" id="relationshipsSection">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Create Relationship</h2>
+                </div>
+                <div class="card-body">
+                    <form id="addRelForm">
+                        <div class="form-group">
+                            <label for="relUser">User</label>
+                            <select id="relUser" class="form-control" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="relType">Type</label>
+                            <select id="relType" class="form-control" required>
+                                <option value="">-- Select --</option>
+                                <option value="WATCHED">WATCHED</option>
+                                <option value="LIKED">LIKED</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="relMovieSearch">Movie</label>
+                            <input type="hidden" id="relMovie" required>
+                            <input type="text" id="relMovieSearch" class="form-control" placeholder="Search movie title or genre">
+                            <div class="selection-summary" id="relMovieSelectedSummary">No movie selected</div>
+                            <div class="poster-select-grid" id="relMoviePicker"></div>
+                        </div>
+                        <div class="inline-controls">
+                            <button type="submit" class="btn btn-success">Create relationship</button>
+                            <button class="btn btn-outline btn-sm" id="sampleMoviesBtn" type="button">Seed sample movies</button>
+                            <button class="btn btn-outline btn-sm" id="sampleRelsBtn" type="button">Seed sample relationships</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>Edit Relationship</h2>
+                </div>
+                <div class="card-body">
+                    <form id="editRelForm">
+                        <div class="form-group">
+                            <label for="editRelSelector">Choose relationship</label>
+                            <select id="editRelSelector" class="form-control"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editRelOriginal">Selected relationship</label>
+                            <input type="text" id="editRelOriginal" class="form-control" readonly placeholder="Pick a relationship from the table below">
+                        </div>
+                        <button type="button" class="field-helper-link" id="jumpToRelationshipListBtn">Nothing selected yet? Jump to the relationship list below and click Edit.</button>
+                        <div class="form-group">
+                            <label for="editRelUser">User</label>
+                            <select id="editRelUser" class="form-control"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editRelType">Type</label>
+                            <select id="editRelType" class="form-control">
+                                <option value="WATCHED">WATCHED</option>
+                                <option value="LIKED">LIKED</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editRelMovieSearch">Movie</label>
+                            <input type="hidden" id="editRelMovie">
+                            <input type="text" id="editRelMovieSearch" class="form-control" placeholder="Search movie title or genre">
+                            <div class="selection-summary" id="editRelMovieSelectedSummary">No movie selected</div>
+                            <div class="poster-select-grid compact" id="editRelMoviePicker"></div>
+                        </div>
+                        <div class="inline-controls">
+                            <button type="submit" class="btn btn-success" id="saveRelEditBtn">Save changes</button>
+                            <button type="button" class="btn btn-outline" id="cancelRelEditBtn">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <section class="card" style="margin-top:1.5rem;">
+            <div class="card-header">
+                <h2>Movie Catalog</h2>
+                <div class="toolbar" style="margin:0;">
+                    <input type="text" id="movieSearchInput" class="form-control search-input" placeholder="Search movie title, genre or description">
+                    <select id="movieGenreFilter" class="form-control" style="min-width:180px;"></select>
+                    <span class="badge badge-primary" id="movieCountBadge">0 movies</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="movieList">
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                        <span>Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card" style="margin-top:1.5rem;" id="relationshipListSection">
+            <div class="card-header">
+                <h2>All Relationships</h2>
+                <div class="toolbar" style="margin:0;">
+                    <input type="text" id="relSearchInput" class="form-control search-input" placeholder="Search user, movie or relationship type">
+                    <span class="badge badge-success" id="relCountBadge">0 relationships</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="relList">
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                        <span>Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/users.js"></script>
+    <script src="js/movies.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+
+</html>

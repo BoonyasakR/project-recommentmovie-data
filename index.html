@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - MovieRec</title>
+    <link rel="stylesheet" href="css/netflix.css">
+</head>
+
+<body>
+    <nav class="nf-nav">
+        <a href="index.html" class="nf-logo">MOVIEREC</a>
+        <div class="nf-links" id="navLinks">
+            <a href="index.html" class="active">Home</a>
+            <a href="admin.html" data-admin-link>Admin</a>
+            <a href="recommend.html">Recommend</a>
+        </div>
+        <div class="nf-actions">
+            <span class="nf-user">Signed in as <strong id="navUserName"></strong></span>
+            <button class="nf-btn-outline" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <main class="nf-container">
+        <section class="hero-block">
+            <h1>เลือกหนัง แล้วบอกระบบว่าคุณดูแล้วหรือชอบเรื่องไหน</h1>
+            <p>หน้านี้ใช้แนว visual แบบเดียวกับไฟล์อ้างอิงที่คุณส่งมา แต่เปลี่ยน flow ให้ผู้ใช้เลือกระหว่าง <strong>ดูแล้ว</strong> กับ <strong>ถูกใจ</strong> ได้ก่อนบันทึกลงระบบจริง</p>
+        </section>
+
+        <div class="toolbar-row">
+            <input type="text" id="movieSearch" class="search-box" placeholder="ค้นหาหนัง">
+            <div class="mode-toggle">
+                <button type="button" class="mode-btn active" data-mode-btn="LIKED" onclick="switchSelectionMode('LIKED')">ถูกใจ</button>
+                <button type="button" class="mode-btn" data-mode-btn="WATCHED" onclick="switchSelectionMode('WATCHED')">ดูแล้ว</button>
+            </div>
+            <span class="counter-pill"><span id="movieCount">0</span> เรื่อง</span>
+        </div>
+
+        <div class="movie-grid" id="movieGrid"></div>
+    </main>
+
+    <button class="floating-confirm" id="confirmBtn" onclick="confirmSelection()">
+        ยืนยันรายการ <span id="confirmTypeLabel">ถูกใจ</span> (<span id="selectCount">0</span>) →
+    </button>
+
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        const currentUser = MovieRecUI.requireAuth();
+        const homeSelectionState = {
+            movies: [],
+            filteredMovies: [],
+            selectedMovies: new Set(),
+            profile: null,
+            currentMode: 'LIKED'
+        };
+
+        if (currentUser) {
+            document.getElementById('navUserName').textContent = `${currentUser.name}${currentUser.role ? ` (${currentUser.role})` : ''}`;
+            document.querySelectorAll('[data-admin-link]').forEach((link) => {
+                link.style.display = MovieRecUI.isAdmin(currentUser) ? '' : 'none';
+            });
+            document.getElementById('movieSearch').addEventListener('input', MovieRecUI.debounce(handleSearch, 120));
+            loadHomeMovies();
+        }
+
+        async function loadHomeMovies() {
+            try {
+                const [movies, profile] = await Promise.all([
+                    getMovies(),
+                    getUserProfile(currentUser.name)
+                ]);
+
+                homeSelectionState.movies = Array.isArray(movies) ? movies : [];
+                homeSelectionState.filteredMovies = [...homeSelectionState.movies];
+                homeSelectionState.profile = profile;
+                syncSelectedMoviesFromProfile();
+                renderMovieGrid();
+                hydrateGridPosters();
+            } catch (error) {
+                document.getElementById('movieGrid').innerHTML = `<div class="auth-error">${MovieRecUI.esc(error.message)}</div>`;
+            }
+        }
+
+        function syncSelectedMoviesFromProfile() {
+            const source = homeSelectionState.currentMode === 'LIKED'
+                ? (homeSelectionState.profile?.liked || [])
+                : (homeSelectionState.profile?.watched || []);
+            homeSelectionState.selectedMovies = new Set(source.filter(Boolean));
+            updateConfirmButton();
+            updateModeButtons();
+        }
+
+        function updateModeButtons() {
+            document.querySelectorAll('[data-mode-btn]').forEach((button) => {
+                const active = button.getAttribute('data-mode-btn') === homeSelectionState.currentMode;
+                button.classList.toggle('active', active);
+            });
+            document.getElementById('confirmTypeLabel').textContent = homeSelectionState.currentMode === 'LIKED' ? 'ถูกใจ' : 'ดูแล้ว';
+        }
+
+        function switchSelectionMode(mode) {
+            if (homeSelectionState.currentMode === mode) return;
+            homeSelectionState.currentMode = mode;
+            syncSelectedMoviesFromProfile();
+            renderMovieGrid();
+            hydrateGridPosters();
+        }
+
+        function handleSearch(event) {
+            const query = (event.target.value || '').trim().toLowerCase();
+            homeSelectionState.filteredMovies = homeSelectionState.movies.filter((movie) =>
+                !query || `${movie.title} ${movie.genre || ''} ${movie.year || ''}`.toLowerCase().includes(query)
+            );
+            renderMovieGrid();
+            hydrateGridPosters();
+        }
+
+        function renderMovieGrid() {
+            const grid = document.getElementById('movieGrid');
+            const movies = homeSelectionState.filteredMovies;
+            document.getElementById('movieCount').textContent = movies.length;
+
+            if (!movies.length) {
+                grid.innerHTML = '<div class="auth-error">ไม่พบหนังที่ตรงกับคำค้น</div>';
+                return;
+            }
+
+            grid.innerHTML = movies.map((movie) => {
+                const active = homeSelectionState.selectedMovies.has(movie.title);
+                const chipLabel = homeSelectionState.currentMode === 'LIKED' ? '❤️ ถูกใจ' : '👁️ ดูแล้ว';
+                return `
+                    <article class="movie-card" onclick="toggleSelect('${MovieRecUI.escJs(movie.title)}')">
+                        <img src="${MovieRecUI.esc(movie.image_url || '')}" alt="${MovieRecUI.esc(movie.title)}" data-home-poster="${MovieRecUI.esc(movie.title)}">
+                        <div class="like-overlay ${active ? 'active' : ''}">
+                            <div class="like-icon">${homeSelectionState.currentMode === 'LIKED' ? '❤️' : '👁️'}</div>
+                        </div>
+                        <div class="movie-info">
+                            <div class="movie-title">${MovieRecUI.esc(movie.title)}</div>
+                            <div class="movie-meta">
+                                ${movie.genre ? `<span class="movie-chip chip-genre">${MovieRecUI.esc(movie.genre)}</span>` : ''}
+                                ${movie.year ? `<span class="movie-chip chip-year">${movie.year}</span>` : ''}
+                                <span class="movie-chip chip-like">${chipLabel}</span>
+                            </div>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+
+            updateConfirmButton();
+        }
+
+        async function hydrateGridPosters() {
+            const posters = document.querySelectorAll('[data-home-poster]');
+            for (const node of posters) {
+                const title = node.getAttribute('data-home-poster');
+                const movie = homeSelectionState.movies.find((item) => item.title === title);
+                if (!movie) continue;
+                const poster = await MovieRecUI.resolvePosterUrl(movie);
+                if (poster) {
+                    movie.image_url = poster;
+                    node.setAttribute('src', poster);
+                }
+            }
+        }
+
+        function toggleSelect(title) {
+            if (homeSelectionState.selectedMovies.has(title)) {
+                homeSelectionState.selectedMovies.delete(title);
+            } else {
+                homeSelectionState.selectedMovies.add(title);
+            }
+            renderMovieGrid();
+            hydrateGridPosters();
+        }
+
+        function updateConfirmButton() {
+            const count = homeSelectionState.selectedMovies.size;
+            document.getElementById('selectCount').textContent = count;
+            document.getElementById('confirmBtn').classList.toggle('show', count > 0);
+        }
+
+        async function confirmSelection() {
+            const btn = document.getElementById('confirmBtn');
+            const selected = [...homeSelectionState.selectedMovies];
+            const relationType = homeSelectionState.currentMode;
+            const sourceList = relationType === 'LIKED'
+                ? new Set((homeSelectionState.profile?.liked || []).filter(Boolean))
+                : new Set((homeSelectionState.profile?.watched || []).filter(Boolean));
+
+            btn.disabled = true;
+            btn.textContent = 'กำลังบันทึก...';
+
+            try {
+                for (const title of selected) {
+                    if (sourceList.has(title)) continue;
+                    await createRelationship(currentUser.name, title, relationType);
+                }
+
+                for (const title of sourceList) {
+                    if (homeSelectionState.selectedMovies.has(title)) continue;
+                    await deleteRelationshipAPI(currentUser.name, title, relationType);
+                }
+
+                homeSelectionState.profile = await getUserProfile(currentUser.name);
+                syncSelectedMoviesFromProfile();
+                window.location.href = 'recommend.html';
+            } catch (error) {
+                btn.disabled = false;
+                btn.innerHTML = `ยืนยันรายการ <span id="confirmTypeLabel">${relationType === 'LIKED' ? 'ถูกใจ' : 'ดูแล้ว'}</span> (<span id="selectCount">${selected.length}</span>) →`;
+                showToast(error.message, 'error');
+                updateConfirmButton();
+                updateModeButtons();
+            }
+        }
+    </script>
+</body>
+
+</html>
